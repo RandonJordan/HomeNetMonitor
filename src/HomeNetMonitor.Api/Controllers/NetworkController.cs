@@ -11,13 +11,16 @@ public class NetworkController : ControllerBase
     private readonly SubnetCalculator _subnetCalculator;
     private readonly DeviceDiscoveryService _deviceDiscoveryService;
     private readonly ArpTableService _arpTableService;
+    private readonly BonjourDiscoveryService _bonjourDiscoveryService;
+
     //injecting DI service below in constructor
-    public NetworkController(NetworkInterfaceService networkInterfaceService, SubnetCalculator subnetCalculator, DeviceDiscoveryService deviceDiscoveryService, ArpTableService arpTableService)
+    public NetworkController(NetworkInterfaceService networkInterfaceService, SubnetCalculator subnetCalculator, DeviceDiscoveryService deviceDiscoveryService, ArpTableService arpTableService, BonjourDiscoveryService bonjourDiscoveryService)
     {
         _networkInterfaceService = networkInterfaceService;
         _subnetCalculator = subnetCalculator;
         _deviceDiscoveryService = deviceDiscoveryService;
         _arpTableService = arpTableService;
+        _bonjourDiscoveryService = bonjourDiscoveryService;
     }
 
     [HttpGet("interfaces")]
@@ -98,5 +101,14 @@ public class NetworkController : ControllerBase
         var entries = await _arpTableService.GetEntriesAsync(cancellationToken);
 
         return Ok(entries);
+    }
+
+    [HttpGet("bonjour")]
+    public async Task<ActionResult> GetBonjourDevices(CancellationToken cancellationToken)
+    {
+        var devices = await _bonjourDiscoveryService
+            .DiscoverAirPlayDevicesAsync(cancellationToken);
+
+        return Ok(devices);
     }
 }

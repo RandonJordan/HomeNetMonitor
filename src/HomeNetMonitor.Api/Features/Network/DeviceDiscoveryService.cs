@@ -10,10 +10,14 @@ public class DeviceDiscoveryService
     private const int PingTimeoutMs = 1500;
     private const int MaxConcurrentPings = 32;
     private readonly ArpTableService _arpTableService;
+    private readonly HostnameResolverService _hostnameResolverService;
+    private readonly BonjourDiscoveryService _bonjourDiscoveryService;
 
-    public DeviceDiscoveryService(ArpTableService arpTableService)
+    public DeviceDiscoveryService(ArpTableService arpTableService, HostnameResolverService hostnameResolverService, BonjourDiscoveryService bonjourDiscoveryService)
     {
         _arpTableService = arpTableService;
+        _hostnameResolverService = hostnameResolverService;
+        _bonjourDiscoveryService = bonjourDiscoveryService;
     }
 
     public async Task<IReadOnlyList<DiscoveredDeviceResponse>> ScanAsync(SubnetInfo subnet, CancellationToken cancellationToken = default)
@@ -62,19 +66,57 @@ public class DeviceDiscoveryService
             }
             else
             {
-                devices[arpEntry.IpAddress] =
-                    new DiscoveredDeviceResponse(
+                devices[arpEntry.IpAddress] = new DiscoveredDeviceResponse(
                         IpAddress: arpEntry.IpAddress,
                         MacAddress: arpEntry.MacAddress,
+                        DisplayName: null,
+                        Model: null,
+                        HostName: null,
                         IsReachable: false,
                         RoundtripTimeMs: null
                     );
             }
         }
+        var bonjourDevices =
+            await _bonjourDiscoveryService.DiscoverAirPlayDevicesAsync(
+                cancellationToken
+            );
 
-        return devices.Values
+        foreach (var bonjourDevice in bonjourDevices)
+        {
+            if (!devices.TryGetValue(
+                    bonjourDevice.IpAddress,
+                    out var existingDevice))
+            {
+                continue;
+            }
+
+            devices[bonjourDevice.IpAddress] = existingDevice with
+            {
+                DisplayName = bonjourDevice.DisplayName,
+                Model = bonjourDevice.Model
+            };
+}
+
+        var hostnameTasks = devices.Values.Select(async device =>
+        {
+            var hostName = await _hostnameResolverService.ResolveAsync(
+                device.IpAddress,
+                cancellationToken
+                );
+
+            return device with
+            {
+                HostName = hostName
+            };
+        });
+
+        var enrichedDevices = await Task.WhenAll(hostnameTasks);
+
+        return enrichedDevices
             .OrderBy(device => ParseLastOctet(device.IpAddress))
             .ToList();
+
     }
 
     private static async Task<DiscoveredDeviceResponse?> PingAddressAsync(string ipAddress, SemaphoreSlim semaphore, CancellationToken cancellationToken)
@@ -97,6 +139,9 @@ public class DeviceDiscoveryService
             return new DiscoveredDeviceResponse(
                 IpAddress: ipAddress,
                 MacAddress: null,
+                DisplayName: null,
+                Model: null,
+                HostName: null,
                 IsReachable: true,
                 RoundtripTimeMs: reply.RoundtripTime
             );

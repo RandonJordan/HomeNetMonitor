@@ -4,7 +4,6 @@ using HomeNetMonitor.Api.Features.Network;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -12,6 +11,8 @@ builder.Services.AddSingleton<NetworkInterfaceService>();
 builder.Services.AddSingleton<SubnetCalculator>();
 builder.Services.AddSingleton<DeviceDiscoveryService>();
 builder.Services.AddSingleton<ArpTableService>();
+builder.Services.AddSingleton<HostnameResolverService>();
+builder.Services.AddSingleton<BonjourDiscoveryService>();
 
 builder.Services.AddCors(options =>
 {

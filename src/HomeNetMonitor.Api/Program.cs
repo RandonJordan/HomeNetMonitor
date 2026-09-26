@@ -10,7 +10,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<NetworkInterfaceService>();
 builder.Services.AddSingleton<SubnetCalculator>();
-
+builder.Services.AddSingleton<DeviceDiscoveryService>();
+builder.Services.AddSingleton<ArpTableService>();
 
 builder.Services.AddCors(options =>
 {
@@ -35,7 +36,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("Frontend");
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseAuthorization();
 

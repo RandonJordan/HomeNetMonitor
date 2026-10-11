@@ -13,6 +13,7 @@ builder.Services.AddSingleton<DeviceDiscoveryService>();
 builder.Services.AddSingleton<ArpTableService>();
 builder.Services.AddSingleton<HostnameResolverService>();
 builder.Services.AddSingleton<BonjourDiscoveryService>();
+builder.Services.AddSingleton<MacVendorLookupService>();
 
 builder.Services.AddCors(options =>
 {

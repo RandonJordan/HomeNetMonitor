@@ -6,6 +6,9 @@ public record DiscoveredDeviceResponse(
     string? DisplayName,
     string? Model,
     string? MacAddress,
+    string? Vendor,
+    bool IsLocallyAdministered,
     bool IsReachable,
-    long? RoundtripTimeMs
+    long? RoundtripTimeMs,
+    IReadOnlyList<DiscoveredServiceResponse> Services
 );

@@ -12,12 +12,14 @@ public class DeviceDiscoveryService
     private readonly ArpTableService _arpTableService;
     private readonly HostnameResolverService _hostnameResolverService;
     private readonly BonjourDiscoveryService _bonjourDiscoveryService;
+    private readonly MacVendorLookupService _macVendorLookupService;
 
-    public DeviceDiscoveryService(ArpTableService arpTableService, HostnameResolverService hostnameResolverService, BonjourDiscoveryService bonjourDiscoveryService)
+    public DeviceDiscoveryService(ArpTableService arpTableService, HostnameResolverService hostnameResolverService, BonjourDiscoveryService bonjourDiscoveryService, MacVendorLookupService macVendorLookupService)
     {
         _arpTableService = arpTableService;
         _hostnameResolverService = hostnameResolverService;
         _bonjourDiscoveryService = bonjourDiscoveryService;
+        _macVendorLookupService = macVendorLookupService;
     }
 
     public async Task<IReadOnlyList<DiscoveredDeviceResponse>> ScanAsync(SubnetInfo subnet, CancellationToken cancellationToken = default)
@@ -46,6 +48,7 @@ public class DeviceDiscoveryService
                 device => device
             );
 
+        
         var validSubnetAddresses = ipAddresses.ToHashSet();
 
         foreach (var arpEntry in arpEntries)
@@ -55,35 +58,48 @@ public class DeviceDiscoveryService
                 continue;
             }
 
+            var isLocallyAdministered =
+                IsLocallyAdministeredMac(arpEntry.MacAddress);
+
+            var vendor = _macVendorLookupService.GetVendor(
+                arpEntry.MacAddress,
+                isLocallyAdministered
+            );
+
             if (devices.TryGetValue(
                 arpEntry.IpAddress,
                 out var existingDevice))
             {
                 devices[arpEntry.IpAddress] = existingDevice with
                 {
-                    MacAddress = arpEntry.MacAddress
+                    MacAddress = arpEntry.MacAddress,
+                    Vendor = vendor,
+                    IsLocallyAdministered = isLocallyAdministered
                 };
             }
             else
             {
                 devices[arpEntry.IpAddress] = new DiscoveredDeviceResponse(
-                        IpAddress: arpEntry.IpAddress,
-                        MacAddress: arpEntry.MacAddress,
-                        DisplayName: null,
-                        Model: null,
-                        HostName: null,
-                        IsReachable: false,
-                        RoundtripTimeMs: null
-                    );
+                    IpAddress: arpEntry.IpAddress,
+                    MacAddress: arpEntry.MacAddress,
+                    IsLocallyAdministered: IsLocallyAdministeredMac(arpEntry.MacAddress),
+                    DisplayName: null,
+                    Model: null,
+                    Vendor: vendor,
+                    HostName: null,
+                    IsReachable: false,
+                    RoundtripTimeMs: null,
+                    Services: []
+                );
             }
         }
         var bonjourDevices =
-            await _bonjourDiscoveryService.DiscoverAirPlayDevicesAsync(
+            await _bonjourDiscoveryService.DiscoverDevicesAsync(
                 cancellationToken
             );
 
         foreach (var bonjourDevice in bonjourDevices)
-        {
+{
             if (!devices.TryGetValue(
                     bonjourDevice.IpAddress,
                     out var existingDevice))
@@ -91,11 +107,47 @@ public class DeviceDiscoveryService
                 continue;
             }
 
+            var services = existingDevice.Services.ToList();
+
+            var serviceAlreadyExists = services.Any(service =>
+                service.ServiceType.Equals(
+                    bonjourDevice.ServiceType,
+                    StringComparison.OrdinalIgnoreCase
+                )
+                &&
+                service.Port == bonjourDevice.Port
+            );
+
+            if (!serviceAlreadyExists)
+            {
+                services.Add(new DiscoveredServiceResponse(
+                    ServiceType: bonjourDevice.ServiceType,
+                    DisplayName: bonjourDevice.DisplayName,
+                    Port: bonjourDevice.Port
+                ));
+            }
+
+            // Decide whether Bonjour gave us a useful top-level device name
+            var displayName = existingDevice.DisplayName;
+
+            if (string.IsNullOrWhiteSpace(displayName)
+                && IsUsefulDisplayName(bonjourDevice.DisplayName))
+            {
+                displayName = bonjourDevice.DisplayName;
+            }
+
+            // Put the enriched device back into the dictionary
             devices[bonjourDevice.IpAddress] = existingDevice with
             {
-                DisplayName = bonjourDevice.DisplayName,
-                Model = bonjourDevice.Model
-            };
+                DisplayName = displayName,
+
+                Model =
+                    string.IsNullOrWhiteSpace(existingDevice.Model)
+                        ? bonjourDevice.Model
+                        : existingDevice.Model,
+
+                Services = services
+        };
 }
 
         var hostnameTasks = devices.Values.Select(async device =>
@@ -131,6 +183,8 @@ public class DeviceDiscoveryService
                 .SendPingAsync(ipAddress, PingTimeoutMs)
                 .WaitAsync(cancellationToken);
 
+            
+
             if (reply.Status != IPStatus.Success)
             {
                 return null;
@@ -138,12 +192,15 @@ public class DeviceDiscoveryService
 
             return new DiscoveredDeviceResponse(
                 IpAddress: ipAddress,
-                MacAddress: null,
+                HostName: null,
                 DisplayName: null,
                 Model: null,
-                HostName: null,
+                IsLocallyAdministered: false,
+                MacAddress: null,
+                Vendor : null,
                 IsReachable: true,
-                RoundtripTimeMs: reply.RoundtripTime
+                RoundtripTimeMs: reply.RoundtripTime,
+                Services: []
             );
         }
         catch (PingException)
@@ -203,5 +260,47 @@ public class DeviceDiscoveryService
         return int.Parse(
             ipAddress.Split('.')[3]
         );
+    }
+
+    private static bool IsUsefulDisplayName(string? displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+            return false;
+
+        if (displayName.Contains("._", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (displayName.EndsWith(".local.", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (displayName.Contains(':'))
+            return false;
+
+        if (Guid.TryParse(displayName, out _))
+            return false;
+        if (displayName.Length >= 12 && displayName.All(Uri.IsHexDigit))
+        {
+            return false;
+        }
+
+        return true;
+    }
+    private static bool IsLocallyAdministeredMac(string? macAddress)
+    {
+        if (string.IsNullOrWhiteSpace(macAddress))
+            return false;
+
+        var firstOctetText = macAddress.Split(':')[0];
+
+        if (!byte.TryParse(
+                firstOctetText,
+                System.Globalization.NumberStyles.HexNumber,
+                null,
+                out var firstOctet))
+        {
+            return false;
+        }
+
+        return (firstOctet & 0b00000010) != 0;
     }
 }

@@ -24,6 +24,9 @@ public class DeviceDiscoveryService
 
     public async Task<IReadOnlyList<DiscoveredDeviceResponse>> ScanAsync(SubnetInfo subnet, CancellationToken cancellationToken = default)
     {
+
+        NetworkScanPolicy.Validate(subnet);
+
         var ipAddresses = GetIpAddresses(
             subnet.FirstUsableAddress,
             subnet.LastUsableAddress

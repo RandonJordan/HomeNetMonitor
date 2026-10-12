@@ -1,4 +1,5 @@
 using HomeNetMonitor.Api.Features.Network;
+using HomeNetMonitor.Api.Infrastructure;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,8 @@ builder.Services.AddSingleton<ArpTableService>();
 builder.Services.AddSingleton<HostnameResolverService>();
 builder.Services.AddSingleton<BonjourDiscoveryService>();
 builder.Services.AddSingleton<MacVendorLookupService>();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services.AddCors(options =>
 {
@@ -28,6 +31,8 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

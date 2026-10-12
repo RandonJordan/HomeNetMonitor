@@ -166,7 +166,7 @@ public class DeviceDiscoveryService
         var enrichedDevices = await Task.WhenAll(hostnameTasks);
 
         return enrichedDevices
-            .OrderBy(device => ParseLastOctet(device.IpAddress))
+            .OrderBy(device => IPv4AddressHelper.ToUInt32(device.IpAddress))
             .ToList();
 
     }
@@ -253,13 +253,6 @@ public class DeviceDiscoveryService
             }
             addressBytes[i] = 0;
         }
-    }
-
-    private static int ParseLastOctet(string ipAddress)
-    {
-        return int.Parse(
-            ipAddress.Split('.')[3]
-        );
     }
 
     private static bool IsUsefulDisplayName(string? displayName)

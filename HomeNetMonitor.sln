@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{4991514B-95D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeNetMonitor.Api", "src\HomeNetMonitor.Api\HomeNetMonitor.Api.csproj", "{FC455C88-D693-4D01-ABF8-13AE068EBAAE}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{006CFE7F-ACAC-492E-A705-0C9FDB2533F6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeNetMonitor.Api.Tests", "tests\HomeNetMonitor.Api.Tests\HomeNetMonitor.Api.Tests.csproj", "{5381D910-5606-481D-ADBB-01D96343A036}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,8 +24,13 @@ Global
 		{FC455C88-D693-4D01-ABF8-13AE068EBAAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC455C88-D693-4D01-ABF8-13AE068EBAAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FC455C88-D693-4D01-ABF8-13AE068EBAAE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5381D910-5606-481D-ADBB-01D96343A036}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5381D910-5606-481D-ADBB-01D96343A036}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5381D910-5606-481D-ADBB-01D96343A036}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5381D910-5606-481D-ADBB-01D96343A036}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{FC455C88-D693-4D01-ABF8-13AE068EBAAE} = {4991514B-95DB-41B5-A647-A44485D63E6A}
+		{5381D910-5606-481D-ADBB-01D96343A036} = {006CFE7F-ACAC-492E-A705-0C9FDB2533F6}
 	EndGlobalSection
 EndGlobal

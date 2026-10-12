@@ -28,16 +28,35 @@ public class SubnetCalculator()
         var networkValue = ToUInt32(networkBytes);
         var broadcastValue = ToUInt32(broadcastBytes);
 
-        var firstUsableValue = networkValue + 1;
-        var lastUsableValue = broadcastValue - 1;
+        uint firstUsable;
+        uint lastUsable;
+        int usableHostCount;
 
-        var usableHostCount =(int)(broadcastValue - networkValue - 1);
+        if (prefixLength == 32)
+        {
+            firstUsable = networkValue;
+            lastUsable = networkValue;
+            usableHostCount = 1;
+        }
+        else if (prefixLength == 31)
+        {
+            firstUsable = networkValue;
+            lastUsable = broadcastValue;
+            usableHostCount = 2;
+        }
+        else
+        {
+            firstUsable = networkValue + 1;
+            lastUsable = broadcastValue - 1;
+            usableHostCount = (int)(broadcastValue - networkValue - 1);
+        }
+
 
         return new SubnetInfo(
-            NetworkAddress: networkAddress.ToString(),
-            BroadcastAddress: broadcastAddress.ToString(),
-            FirstUsableAddress: FromUInt32(firstUsableValue),
-            LastUsableAddress: FromUInt32(lastUsableValue),
+            NetworkAddress: new IPAddress(networkBytes).ToString(),
+            BroadcastAddress: new IPAddress(broadcastBytes).ToString(),
+            FirstUsableAddress: FromUInt32(firstUsable).ToString(),
+            LastUsableAddress: FromUInt32(lastUsable).ToString(),
             PrefixLength: prefixLength,
             UsableHostCount: usableHostCount
 

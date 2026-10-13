@@ -2,6 +2,7 @@ import {Route, Routes} from "react-router";
 
 import AppShell from "./layout/AppShell";
 import DashboardPage from "../features/dashboard/DashboardPage";
+import DevicesPage from "../features/devices/DevicesPage";
 import PlaceholderPage from "../shared/components/PlaceholderPage";
 
 function App() {
@@ -11,11 +12,9 @@ function App() {
             <Route element={<AppShell />}>
                 <Route index element={<DashboardPage />}/>
 
-                <Route 
-                path="devices" 
-                element={<PlaceholderPage 
-                title="Devices" 
-                description ="Discover and inspect devices connected to your network."/>} 
+                <Route
+                path="devices"
+                element={<DevicesPage />}
                 />
 
                 <Route 

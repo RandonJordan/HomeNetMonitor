@@ -270,3 +270,147 @@ a {
     text-align: left;
   }
 }
+
+
+/* Devices Page */
+
+.devices-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-top: 28px;
+  padding: 18px 20px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+
+  color: var(--text-secondary);
+}
+
+.devices-summary strong {
+  color: var(--accent);
+  font-size: 1.5rem;
+}
+
+.devices-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.device-card {
+  padding: 20px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+
+  transition: border-color 0.2s ease;
+}
+
+.device-card:hover {
+  border-color: var(--accent);
+}
+
+.device-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.device-card__header h3 {
+  margin: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.device-card__id {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.device-card__ip {
+  margin: 10px 0 18px;
+
+  color: var(--accent);
+  font-family: monospace;
+  font-size: 0.95rem;
+}
+
+.device-card__details {
+  display: grid;
+  gap: 8px;
+
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.devices-message {
+  margin-top: 24px;
+  color: var(--text-secondary);
+}
+
+.devices-message--error {
+  color: #ff8b8b;
+}
+
+@media (min-width: 900px) {
+  .devices-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.device-card__history-button {
+  margin-top: 18px;
+  padding: 10px 14px;
+
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+
+  background: var(--accent-muted);
+  color: var(--accent);
+
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.device-card__history-button:hover {
+  background: rgba(67, 230, 164, 0.2);
+}
+
+.device-history {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.device-history h4 {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+}
+
+.device-history__list {
+  display: grid;
+  gap: 10px;
+}
+
+.device-history__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.device-history__row span:last-child {
+  color: var(--accent);
+  white-space: nowrap;
+}

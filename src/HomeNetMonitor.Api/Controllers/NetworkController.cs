@@ -1,5 +1,8 @@
 using HomeNetMonitor.Api.Features.Network;
 using Microsoft.AspNetCore.Mvc;
+using HomeNetMonitor.Api.Features.Network.Persistence;
+using HomeNetMonitor.Api.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace HomeNetMonitor.Api.Controller;
 
@@ -7,16 +10,19 @@ namespace HomeNetMonitor.Api.Controller;
 [Route("api/[controller]")]
 public class NetworkController : ControllerBase
 {
+    private readonly HomeNetMonitorDbContext _dbContext;
     private readonly NetworkInterfaceService _networkInterfaceService;
     private readonly SubnetCalculator _subnetCalculator;
     private readonly DeviceDiscoveryService _deviceDiscoveryService;
     private readonly ArpTableService _arpTableService;
     private readonly BonjourDiscoveryService _bonjourDiscoveryService;
     private readonly MacVendorLookupService _macVendorLookupService;
+    private readonly IDevicePersistenceService _devicePersistenceService;
 
     //injecting DI service below in constructor
     public NetworkController(NetworkInterfaceService networkInterfaceService, SubnetCalculator subnetCalculator, DeviceDiscoveryService deviceDiscoveryService,
-    ArpTableService arpTableService, BonjourDiscoveryService bonjourDiscoveryService, MacVendorLookupService macVendorLookupService)
+    ArpTableService arpTableService, BonjourDiscoveryService bonjourDiscoveryService, MacVendorLookupService macVendorLookupService, IDevicePersistenceService devicePersistenceService
+    ,HomeNetMonitorDbContext dbContext)
     {
         _networkInterfaceService = networkInterfaceService;
         _subnetCalculator = subnetCalculator;
@@ -24,6 +30,8 @@ public class NetworkController : ControllerBase
         _arpTableService = arpTableService;
         _bonjourDiscoveryService = bonjourDiscoveryService;
         _macVendorLookupService = macVendorLookupService;
+        _devicePersistenceService = devicePersistenceService;
+        _dbContext = dbContext;
     }
 
     [HttpGet("interfaces")]
@@ -90,15 +98,24 @@ public class NetworkController : ControllerBase
             ipv4Address.SubnetMask
         );
 
+        // Discover devices currently visible on the network.
         var devices = await _deviceDiscoveryService.ScanAsync(
             subnet,
             cancellationToken
         );
 
+        // Store confirmed devices and their observations in SQLite.
+        await _devicePersistenceService.SaveDiscoveredDevicesAsync(
+            devices,
+            cancellationToken
+        );
+
+        // Return the live scan results to the frontend.
         return Ok(devices);
+
     }
 
-    [HttpGet("arp")]
+    [HttpGet("arp")]    
     public async Task<ActionResult<IReadOnlyList<ArpEntryResponse>>> GetArpEntries( CancellationToken cancellationToken)
     {
         var entries = await _arpTableService.GetEntriesAsync(cancellationToken);
@@ -113,6 +130,63 @@ public class NetworkController : ControllerBase
             .DiscoverDevicesAsync(cancellationToken);
 
         return Ok(devices);
+    }
+
+    [HttpGet("devices/saved")]
+    public async Task<IActionResult> GetSavedDevices(
+        CancellationToken cancellationToken)
+    {
+        var devices = await _dbContext.NetworkDevices
+            .AsNoTracking()
+            .OrderBy(device => device.Id)
+            .Select(device => new
+            {
+                device.Id,
+                device.IpAddress,
+                device.MacAddress,
+                device.Hostname,
+                device.DisplayName,
+                device.Model,
+                device.Vendor,
+                device.FirstSeenUtc,
+                device.LastSeenUtc
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(devices);
+    }
+
+    [HttpGet("devices/{deviceId:int}/history")]
+    public async Task<IActionResult> GetDeviceHistory(
+        int deviceId,
+        CancellationToken cancellationToken)
+    {
+        // Make sure the device exists.
+        var deviceExists = await _dbContext.NetworkDevices
+            .AsNoTracking()
+            .AnyAsync(d => d.Id == deviceId, cancellationToken);
+
+        if (!deviceExists)
+        {
+            return NotFound($"Device with ID {deviceId} was not found.");
+        }
+
+        // Retrieve its historical observations.
+        var observations = await _dbContext.DeviceObservation
+            .AsNoTracking()
+            .Where(o => o.NetworkDeviceId == deviceId)
+            .OrderByDescending(o => o.ObservedAtUtc)
+            .Select(o => new
+            {
+                o.Id,
+                o.ObservedAtUtc,
+                o.IpAddress,
+                o.RespondedToPing,
+                o.RoundtripTimeMs
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(observations);
     }
 
 }
